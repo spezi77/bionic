@@ -122,9 +122,10 @@
 ElfReader::ElfReader(const char* name, int fd)
     : name_(name), fd_(fd),
       phdr_num_(0), phdr_mmap_(NULL), phdr_table_(NULL), phdr_size_(0),
-      load_start_(NULL), load_size_(0), load_bias_(0),
 #ifdef ENABLE_PRELINK_SUPPORT
-      required_base_(0),
+      load_start_(NULL), load_size_(0), load_bias_(0), required_base_(0),
+#else
+      load_start_(NULL), load_size_(0), load_bias_(0),
 #endif
       loaded_phdr_(NULL) {
 }
@@ -296,7 +297,7 @@ typedef struct {
 
 /* Returns the requested base address if the library is prelinked,
  * and 0 otherwise.  */
-static ElfW(Addr) is_prelinked(int fd, const char *name)
+static Elf32_Addr is_prelinked(int fd, const char *name)
 {
     off_t sz = lseek(fd, -sizeof(prelink_info_t), SEEK_END);
     if (sz < 0) {
@@ -330,9 +331,11 @@ bool ElfReader::ReserveAddressSpace(const android_dlextinfo* extinfo) {
     DL_ERR("\"%s\" has no loadable segments", name_);
     return false;
   }
+
 #ifdef ENABLE_PRELINK_SUPPORT
   required_base_ = is_prelinked(fd_, name_);
 #endif
+
   uint8_t* addr = reinterpret_cast<uint8_t*>(min_vaddr);
   void* start;
   size_t reserved_size = 0;
@@ -354,13 +357,13 @@ bool ElfReader::ReserveAddressSpace(const android_dlextinfo* extinfo) {
       return false;
     }
     int mmap_flags = MAP_PRIVATE | MAP_ANONYMOUS;
-#ifndef ENABLE_PRELINK_SUPPORT
-    start = mmap(addr, load_size_, PROT_NONE, mmap_flags, -1, 0);
-#else
-    if (required_base_ != 0)
+#ifdef ENABLE_PRELINK_SUPPORT
+    if (required_base_ != 0) {
       mmap_flags |= MAP_FIXED;
-    start = mmap((void*)required_base_, load_size_, PROT_NONE, mmap_flags, -1, 0);
+      addr = (uint8_t*) required_base_;
+    }
 #endif
+    start = mmap(addr, load_size_, PROT_NONE, mmap_flags, -1, 0);
     if (start == MAP_FAILED) {
       DL_ERR("couldn't reserve %zd bytes of address space for \"%s\"", load_size_, name_);
       return false;
@@ -370,7 +373,11 @@ bool ElfReader::ReserveAddressSpace(const android_dlextinfo* extinfo) {
   }
 
   load_start_ = start;
+#ifdef ENABLE_PRELINK_SUPPORT
+  load_bias_ = reinterpret_cast<uint8_t*>(start) - reinterpret_cast<uint8_t*>(min_vaddr);
+#else
   load_bias_ = reinterpret_cast<uint8_t*>(start) - addr;
+#endif
   return true;
 }
 
