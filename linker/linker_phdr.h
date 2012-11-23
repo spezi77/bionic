@@ -48,10 +48,10 @@ class ElfReader {
   ElfW(Addr) load_start() { return reinterpret_cast<ElfW(Addr)>(load_start_); }
   size_t load_size() { return load_size_; }
   ElfW(Addr) load_bias() { return load_bias_; }
-  const ElfW(Phdr)* loaded_phdr() { return loaded_phdr_; }
 #ifdef ENABLE_PRELINK_SUPPORT
-  ElfW(Addr) required_base() { return required_base_; }
+  Elf32_Addr required_base() { return required_base_; }
 #endif
+  const ElfW(Phdr)* loaded_phdr() { return loaded_phdr_; }
 
  private:
   bool ReadElfHeader();
@@ -81,8 +81,9 @@ class ElfReader {
 #ifdef ENABLE_PRELINK_SUPPORT
   // For prelinked libraries, mandatory load address of the first
   // loadable segment. 0 otherwise.
-  ElfW(Addr) required_base_;
+  Elf32_Addr required_base_;
 #endif
+
   // Loaded phdr.
   const ElfW(Phdr)* loaded_phdr_;
 };
