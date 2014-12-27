@@ -652,7 +652,6 @@ LOCAL_CFLAGS := \
     -DANDROID_CHANGES \
     -DINET6 \
     -fvisibility=hidden \
-    -fno-strict-aliasing \
     -Wno-unused-parameter \
     -I$(LOCAL_PATH)/dns/include \
     -I$(LOCAL_PATH)/private \
